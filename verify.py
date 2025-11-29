@@ -274,22 +274,26 @@ class DocsetValidator:
         sample_files = random.sample(html_files, sample_size)
 
         total_anchors = 0
-        broken_anchors = 0
-        anchor_pattern = re.compile(r'class="dashAnchor"[^>]*name="//apple_ref/cpp/(\w+)/([^"]+)"')
+        anchors_outside_headings = 0
 
         for html_file in sample_files:
             try:
                 content = html_file.read_text(encoding="utf-8", errors="ignore")
-                anchors = anchor_pattern.findall(content)
-                total_anchors += len(anchors)
 
-                # Check if there are heading IDs that match
-                for entry_type, name in anchors:
-                    # The anchor should be near a heading with an ID
-                    # We just check that the file has some heading IDs
-                    if 'id="' not in content:
-                        broken_anchors += 1
-                        break
+                # Count anchors
+                anchor_matches = re.findall(r'class="dashAnchor"', content)
+                total_anchors += len(anchor_matches)
+
+                # Check if anchors are inside headings (not before them)
+                # Good: <h2><a class="dashAnchor"...></a>Title</h2>
+                # Bad:  <a class="dashAnchor"...></a><h2>Title</h2>
+                # Match anchor tags with dashAnchor class followed by heading tags
+                bad_pattern = re.compile(
+                    r'<a\s[^>]*dashAnchor[^>]*>\s*</a>\s*<h[123]',
+                    re.IGNORECASE
+                )
+                bad_matches = bad_pattern.findall(content)
+                anchors_outside_headings += len(bad_matches)
             except OSError:
                 pass
 
@@ -297,6 +301,11 @@ class DocsetValidator:
             self.warning("No dashAnchor elements found in sampled files")
         else:
             self.success(f"Found {total_anchors} TOC anchors in {sample_size} sampled files")
+
+        if anchors_outside_headings > 0:
+            self.warning(
+                f"{anchors_outside_headings} anchors placed before headings (should be inside)"
+            )
 
         # Check search index entries have valid anchor targets
         if self.db_path.exists():

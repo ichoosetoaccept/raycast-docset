@@ -170,8 +170,18 @@ class DocsetBuilder:
                 anchor["name"] = f"//apple_ref/cpp/{entry_type}/{encoded_name}"
                 anchor["class"] = "dashAnchor"
 
-                # Insert anchor before the heading
-                heading.insert_before(anchor)
+                # Insert anchor inside the heading (at the start) so the heading isn't cut off
+                heading.insert(0, anchor)
+
+            # Inject CSS to fix scroll margin when navigating via TOC
+            style_tag = soup.new_tag("style")
+            style_tag.string = """
+                h1:has(.dashAnchor), h2:has(.dashAnchor), h3:has(.dashAnchor) {
+                    scroll-margin-top: 80px !important;
+                }
+            """
+            if soup.head:
+                soup.head.append(style_tag)
 
             # Write modified HTML
             dest_file.write_text(str(soup), encoding="utf-8")
