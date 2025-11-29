@@ -60,7 +60,8 @@ class DocsetValidator:
         self._check_info_plist()
         self._check_icons()
         self._check_search_index()
-        self._check_html_paths()
+        self._check_html_content()
+        self._check_toc_anchors()
 
         print("=" * 60)
         if self.errors:
@@ -221,9 +222,9 @@ class DocsetValidator:
         except sqlite3.Error as e:
             self.error(f"SQLite error: {e}")
 
-    def _check_html_paths(self) -> None:
-        """Check HTML files exist and sample for issues."""
-        print("\n🔗 Checking HTML files...")
+    def _check_html_content(self) -> None:
+        """Check HTML files for unwanted content (tracking, cookies, etc.)."""
+        print("\n🔗 Checking HTML content...")
 
         html_files = list(self.documents_dir.rglob("*.html"))
         if not html_files:
@@ -232,25 +233,102 @@ class DocsetValidator:
 
         self.success(f"Found {len(html_files)} HTML files")
 
-        # Sample some HTML files to check for external resources that should be removed
+        # Sample some HTML files to check for unwanted content
         sample_size = min(20, len(html_files))
         sample_files = random.sample(html_files, sample_size)
 
-        # Check for external resource references that should be local
-        external_patterns = [
-            (r"googletagmanager\.com", "Google Tag Manager (should be removed)"),
-            (r"google-analytics\.com", "Google Analytics (should be removed)"),
+        # Patterns that indicate unwanted content
+        unwanted_patterns = [
+            (r"googletagmanager\.com", "Google Tag Manager"),
+            (r"google-analytics\.com", "Google Analytics"),
+            (r"cdn\.cookielaw\.org", "Cookie consent (OneTrust)"),
+            (r"cookieconsent", "Cookie consent script"),
+            (r"gdpr|privacy.?consent", "GDPR/privacy consent"),
         ]
 
-        for pattern, desc in external_patterns:
-            for html_file in sample_files[:5]:
-                try:
-                    content = html_file.read_text(encoding="utf-8", errors="ignore")
-                    if re.search(pattern, content):
-                        self.warning(f"{desc} found")
+        found_issues: set[str] = set()
+        for html_file in sample_files:
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="ignore")
+                for pattern, desc in unwanted_patterns:
+                    if re.search(pattern, content, re.IGNORECASE):
+                        found_issues.add(desc)
+            except OSError:
+                pass
+
+        for issue in found_issues:
+            self.warning(f"Found unwanted content: {issue}")
+
+        if not found_issues:
+            self.success("No tracking/cookie scripts detected")
+
+    def _check_toc_anchors(self) -> None:
+        """Check that TOC anchors are properly formed and targets exist."""
+        print("\n📑 Checking TOC anchors...")
+
+        html_files = list(self.documents_dir.rglob("*.html"))
+        if not html_files:
+            return
+
+        sample_size = min(10, len(html_files))
+        sample_files = random.sample(html_files, sample_size)
+
+        total_anchors = 0
+        broken_anchors = 0
+        anchor_pattern = re.compile(r'class="dashAnchor"[^>]*name="//apple_ref/cpp/(\w+)/([^"]+)"')
+
+        for html_file in sample_files:
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="ignore")
+                anchors = anchor_pattern.findall(content)
+                total_anchors += len(anchors)
+
+                # Check if there are heading IDs that match
+                for entry_type, name in anchors:
+                    # The anchor should be near a heading with an ID
+                    # We just check that the file has some heading IDs
+                    if 'id="' not in content:
+                        broken_anchors += 1
                         break
-                except OSError:
-                    pass
+            except OSError:
+                pass
+
+        if total_anchors == 0:
+            self.warning("No dashAnchor elements found in sampled files")
+        else:
+            self.success(f"Found {total_anchors} TOC anchors in {sample_size} sampled files")
+
+        # Check search index entries have valid anchor targets
+        if self.db_path.exists():
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT path FROM searchIndex WHERE path LIKE '%#%' "
+                    "ORDER BY RANDOM() LIMIT 10"
+                )
+                anchor_paths = cursor.fetchall()
+                conn.close()
+
+                missing_targets = 0
+                for (path,) in anchor_paths:
+                    file_path, anchor = path.split("#", 1)
+                    full_path = self.documents_dir / file_path
+                    if full_path.exists():
+                        content = full_path.read_text(encoding="utf-8", errors="ignore")
+                        # Check if the anchor ID exists in the file
+                        if f'id="{anchor}"' not in content and f"id='{anchor}'" not in content:
+                            missing_targets += 1
+
+                if missing_targets > 0:
+                    self.warning(
+                        f"{missing_targets}/10 sampled TOC entries point to missing anchors"
+                    )
+                elif anchor_paths:
+                    self.success("Sampled TOC anchor targets exist")
+
+            except sqlite3.Error:
+                pass
 
 
 def main() -> int:

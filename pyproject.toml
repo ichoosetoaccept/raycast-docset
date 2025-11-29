@@ -19,7 +19,7 @@ dev = [
 
 [tool.poe.tasks]
 scrape = "uv run main.py --scrape"
-build = "uv run main.py --source .cache/raycast-docs"
+build = "uv run main.py --source .cache/raycast-docs/developers.raycast.com"
 verify = "uv run verify.py -v"
 clean = { shell = "rm -rf output/ .cache/" }
 check = "uv run ty check"

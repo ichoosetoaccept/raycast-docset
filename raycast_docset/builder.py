@@ -29,7 +29,7 @@ INFO_PLIST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <key>isDashDocset</key>
     <true/>
     <key>isJavaScriptEnabled</key>
-    <true/>
+    <false/>
     <key>dashIndexFilePath</key>
     <string>{index_path}</string>
     <key>DashDocSetKeyword</key>
@@ -208,6 +208,28 @@ class DocsetBuilder:
         )
         content = re.sub(
             r"<script[^>]*google-analytics[^>]*>.*?</script>",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+        # Remove GitBook cookie consent and tracking scripts
+        content = re.sub(
+            r"<script[^>]*gitbook[^>]*>.*?</script>",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        # Remove inline scripts that reference cookies/consent
+        content = re.sub(
+            r"<script[^>]*>[^<]*cookie[^<]*</script>",
+            "",
+            content,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+        # Remove any elements with cookie-related classes
+        content = re.sub(
+            r'<div[^>]*class="[^"]*cookie[^"]*"[^>]*>.*?</div>',
             "",
             content,
             flags=re.DOTALL | re.IGNORECASE,
