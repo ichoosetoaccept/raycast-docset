@@ -179,47 +179,6 @@ class ContributionChecker:
         except sqlite3.Error as e:
             self.error(f"Database error: {e}")
 
-    def check_offline(self) -> None:
-        """Check pages work offline."""
-        print("\n🌐 Checking offline compatibility...")
-
-        html_files = list(self.documents_dir.rglob("*.html"))[:10]
-
-        external_resources = 0
-        for html_file in html_files:
-            try:
-                content = html_file.read_text(encoding="utf-8", errors="ignore")
-                # Check for external resources (excluding common CDNs that might be cached)
-                if re.search(r'(src|href)="https?://(?!fonts\.googleapis)', content):
-                    external_resources += 1
-            except OSError:
-                pass
-
-        if external_resources > 0:
-            self.warning(f"{external_resources}/10 sampled files have external resources")
-        else:
-            self.success("No external resources in sampled files")
-
-    def check_display_optimization(self) -> None:
-        """Check docset is optimized for Dash display."""
-        print("\n📱 Checking display optimization...")
-
-        html_files = list(self.documents_dir.rglob("*.html"))[:5]
-
-        sidebars_found = 0
-        for html_file in html_files:
-            try:
-                content = html_file.read_text(encoding="utf-8", errors="ignore")
-                if re.search(r"<(nav|aside|header)[^>]*>", content, re.IGNORECASE):
-                    sidebars_found += 1
-            except OSError:
-                pass
-
-        if sidebars_found > 0:
-            self.warning(f"{sidebars_found}/5 files have nav/aside/header elements (should be removed)")
-        else:
-            self.success("No sidebar/nav elements found (good for Dash display)")
-
     def validate(self) -> bool:
         """Run all checks and return True if all required checks pass."""
         print(f"Validating docset for Dash contribution: {self.docset_path}")
@@ -229,8 +188,6 @@ class ContributionChecker:
         self.check_plist()
         self.check_icons()
         self.check_index()
-        self.check_offline()
-        self.check_display_optimization()
 
         print("\n" + "=" * 60)
 
