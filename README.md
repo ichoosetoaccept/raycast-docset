@@ -18,7 +18,7 @@ Generate a [Dash](https://kapeli.com/dash) docset for [Raycast developer documen
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/ichoosetoaccept/raycast-docset.git
 cd raycast-docset
 
 # Install dependencies with uv
@@ -42,6 +42,16 @@ uv run python main.py --scrape --output ./my-output
 ```bash
 # If you've already scraped the docs
 uv run python main.py --source .cache/raycast-docs
+```
+
+### Using poe tasks
+
+```bash
+poe scrape   # Scrape docs from developers.raycast.com
+poe build    # Build docset from scraped docs
+poe verify   # Validate the docset
+poe clean    # Remove output directory
+poe all      # Scrape, build, and verify
 ```
 
 ## Output
