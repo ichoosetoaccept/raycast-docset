@@ -148,6 +148,9 @@ class DocsetBuilder:
             # Remove any nav elements with site navigation
             for nav in soup.find_all("nav"):
                 nav.decompose()
+            # Remove aside elements (left sidebar TOC - we use Dash's TOC instead)
+            for aside in soup.find_all("aside"):
+                aside.decompose()
 
             # Find all headings with IDs (h1, h2, h3)
             for heading in soup.find_all(["h1", "h2", "h3"], id=True):
