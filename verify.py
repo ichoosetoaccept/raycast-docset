@@ -262,6 +262,22 @@ class DocsetValidator:
         if not found_issues:
             self.success("No tracking/cookie scripts detected")
 
+        # Check that header/nav elements have been removed (broken links in offline docset)
+        nav_found = False
+        for html_file in sample_files[:3]:
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="ignore")
+                if re.search(r'<header[^>]*>', content) or re.search(r'<nav[^>]*>', content):
+                    nav_found = True
+                    break
+            except OSError:
+                pass
+
+        if nav_found:
+            self.warning("Header/nav elements found (should be removed for offline docset)")
+        else:
+            self.success("No header/nav elements (clean offline display)")
+
     def _check_toc_anchors(self) -> None:
         """Check that TOC anchors are properly formed and targets exist."""
         print("\n📑 Checking TOC anchors...")

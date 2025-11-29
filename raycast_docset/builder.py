@@ -141,6 +141,14 @@ class DocsetBuilder:
 
             soup = BeautifulSoup(content, "lxml")
 
+            # Remove navigation elements that have broken links in offline docset
+            # Remove header/navbar
+            for header in soup.find_all("header"):
+                header.decompose()
+            # Remove any nav elements with site navigation
+            for nav in soup.find_all("nav"):
+                nav.decompose()
+
             # Find all headings with IDs (h1, h2, h3)
             for heading in soup.find_all(["h1", "h2", "h3"], id=True):
                 heading_id = heading.get("id")
