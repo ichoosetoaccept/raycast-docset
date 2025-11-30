@@ -14,6 +14,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=9.0.1",
     "ty>=0.0.1a29",
 ]
 
@@ -23,6 +24,7 @@ build = "uv run main.py --source .cache/raycast-docs/developers.raycast.com"
 verify = "uv run verify.py -v"
 clean = { shell = "rm -rf output/ .cache/" }
 check = "uv run ty check"
+test = "uv run pytest tests/ -v"
 
 [tool.poe.tasks.all]
 help = "Scrape, build, and verify the docset"
