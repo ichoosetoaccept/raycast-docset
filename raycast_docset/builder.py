@@ -272,17 +272,19 @@ class DocsetBuilder:
             flags=re.IGNORECASE,
         )
 
-        # Remove GitBook image proxy URLs from src, srcset, and other attributes
+        # Remove all attributes containing GitBook image proxy URLs
         # These are dynamic image URLs that won't work offline
+        # Matches src, srcset, href, content, etc.
         content = re.sub(
-            r'https://developers\.raycast\.com/~gitbook/image[^"\s,]*',
+            r'\s*(src|srcset|href|content)="[^"]*~gitbook/image[^"]*"',
             '',
             content,
             flags=re.IGNORECASE,
         )
-        # Also handle relative gitbook image URLs
+        # Strip all gitbook image proxy URLs anywhere (JSON-LD, JS arrays, etc.)
+        # Match any URL containing ~gitbook/image up to common terminators
         content = re.sub(
-            r'developers\.raycast\.com/~gitbook/image[^"\s,]*',
+            r'[^"\'<>\s,\[\]]*~gitbook/image[^"\'<>\s,\[\]]*',
             '',
             content,
             flags=re.IGNORECASE,

@@ -239,7 +239,8 @@ class DocsetValidator:
         external_patterns = [
             (re.compile(r'<link[^>]*static-2v\.gitbook\.com[^>]*>', re.IGNORECASE), "GitBook CSS"),
             (re.compile(r'<[^>]*ka-p\.fontawesome\.com[^>]*>', re.IGNORECASE), "FontAwesome"),
-            (re.compile(r'developers\.raycast\.com/~gitbook/image', re.IGNORECASE), "GitBook image proxy"),
+            (re.compile(r'~gitbook/image', re.IGNORECASE), "GitBook image proxy"),
+            (re.compile(r'srcset="\s*\d+w', re.IGNORECASE), "Broken srcset (orphaned width descriptors)"),
         ]
 
         files_with_external = []
