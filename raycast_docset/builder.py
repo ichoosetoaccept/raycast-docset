@@ -280,7 +280,7 @@ class DocsetBuilder:
         # These are dynamic image URLs that won't work offline
         # Matches src, srcset, href, content, etc.
         content = re.sub(
-            r' (src|srcset|href|content)="[^"]*~gitbook/image[^"]*"\s*',
+            r'\s+(src|srcset|href|content)="[^"]*~gitbook/image[^"]*"\s*',
             ' ',
             content,
             flags=re.IGNORECASE,
