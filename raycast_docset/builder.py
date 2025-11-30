@@ -116,6 +116,10 @@ class DocsetBuilder:
                 continue
 
             relative = source_file.relative_to(source_root)
+
+            # Skip gitbook internal directories (image proxy cache, etc.)
+            if "~gitbook" in str(relative):
+                continue
             dest_file = dest_root / relative
             dest_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -276,8 +280,8 @@ class DocsetBuilder:
         # These are dynamic image URLs that won't work offline
         # Matches src, srcset, href, content, etc.
         content = re.sub(
-            r'\s*(src|srcset|href|content)="[^"]*~gitbook/image[^"]*"',
-            '',
+            r' (src|srcset|href|content)="[^"]*~gitbook/image[^"]*"\s*',
+            ' ',
             content,
             flags=re.IGNORECASE,
         )
@@ -286,6 +290,14 @@ class DocsetBuilder:
         content = re.sub(
             r'[^"\'<>\s,\[\]]*~gitbook/image[^"\'<>\s,\[\]]*',
             '',
+            content,
+            flags=re.IGNORECASE,
+        )
+
+        # Clean up orphaned srcset/imagesrcset width descriptors (e.g., srcset=" 1200w" after URL removal)
+        content = re.sub(
+            r' (image)?srcset="\s*(\d+w\s*,?\s*)+"\s*',
+            ' ',
             content,
             flags=re.IGNORECASE,
         )

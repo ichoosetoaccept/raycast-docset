@@ -306,6 +306,47 @@ class DocsetValidator:
         if not found_issues:
             self.success("No tracking/cookie scripts detected")
 
+        # Check for malformed HTML tags (e.g., <imgalt="..."> from bad attribute removal)
+        malformed_tags_found = 0
+        malformed_pattern = re.compile(r'<[a-z]+[a-z]+=', re.IGNORECASE)
+        for html_file in sample_files:
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="ignore")
+                # Find tags where attribute name is directly joined to tag name
+                matches = malformed_pattern.findall(content)
+                # Filter out valid cases like <meta...> by checking for known malformed patterns
+                for match in matches:
+                    # Extract the "tag" part - if it's not a valid HTML tag, it's malformed
+                    tag_part = match[1:-1].split("=")[0]  # e.g., "imgalt" from "<imgalt="
+                    valid_tags = {
+                        "a", "abbr", "address", "area", "article", "aside", "audio",
+                        "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button",
+                        "canvas", "caption", "cite", "code", "col", "colgroup",
+                        "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt",
+                        "em", "embed", "fieldset", "figcaption", "figure", "footer", "form",
+                        "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html",
+                        "i", "iframe", "img", "input", "ins", "kbd", "label", "legend", "li", "link",
+                        "main", "map", "mark", "menu", "meta", "meter", "nav", "noscript",
+                        "object", "ol", "optgroup", "option", "output", "p", "picture", "pre", "progress",
+                        "q", "rp", "rt", "ruby", "s", "samp", "script", "search", "section", "select",
+                        "slot", "small", "source", "span", "strong", "style", "sub", "summary", "sup",
+                        "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time",
+                        "title", "tr", "track", "u", "ul", "var", "video", "wbr",
+                    }
+                    if tag_part.lower() not in valid_tags:
+                        malformed_tags_found += 1
+                        if self.verbose:
+                            rel_path = html_file.relative_to(self.documents_dir)
+                            self.warning(f"Malformed tag '{match}' in {rel_path}")
+                        break  # Only count once per file
+            except OSError:
+                pass
+
+        if malformed_tags_found > 0:
+            self.error(f"Found {malformed_tags_found} file(s) with malformed HTML tags (e.g., <imgalt=...>)")
+        else:
+            self.success("No malformed HTML tags detected")
+
         # Check that header/nav/aside elements have been removed (broken links in offline docset)
         nav_found = False
         for html_file in sample_files[:3]:
