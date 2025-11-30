@@ -256,6 +256,38 @@ class DocsetBuilder:
             flags=re.DOTALL | re.IGNORECASE,
         )
 
+        # Remove external GitBook CSS (won't work offline)
+        content = re.sub(
+            r'<link[^>]*static-2v\.gitbook\.com[^>]*/?>',
+            "",
+            content,
+            flags=re.IGNORECASE,
+        )
+
+        # Remove external FontAwesome SVG requests
+        content = re.sub(
+            r'<[^>]*ka-p\.fontawesome\.com[^>]*>',
+            "",
+            content,
+            flags=re.IGNORECASE,
+        )
+
+        # Remove GitBook image proxy URLs from src, srcset, and other attributes
+        # These are dynamic image URLs that won't work offline
+        content = re.sub(
+            r'https://developers\.raycast\.com/~gitbook/image[^"\s,]*',
+            '',
+            content,
+            flags=re.IGNORECASE,
+        )
+        # Also handle relative gitbook image URLs
+        content = re.sub(
+            r'developers\.raycast\.com/~gitbook/image[^"\s,]*',
+            '',
+            content,
+            flags=re.IGNORECASE,
+        )
+
         return content
 
     def _setup_icon(self) -> None:

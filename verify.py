@@ -60,6 +60,7 @@ class DocsetValidator:
         self._check_info_plist()
         self._check_icons()
         self._check_search_index()
+        self._check_external_resources()
         self._check_html_content()
         self._check_toc_anchors()
 
@@ -221,6 +222,48 @@ class DocsetValidator:
 
         except sqlite3.Error as e:
             self.error(f"SQLite error: {e}")
+
+    def _check_external_resources(self) -> None:
+        """Check for external resources that break offline viewing."""
+        print("\n🌐 Checking for external resources...")
+
+        html_files = list(self.documents_dir.rglob("*.html"))
+        if not html_files:
+            return
+
+        # Sample some files
+        sample_size = min(50, len(html_files))
+        sample_files = random.sample(html_files, sample_size)
+
+        # Patterns for external resources that should be removed
+        external_patterns = [
+            (re.compile(r'<link[^>]*static-2v\.gitbook\.com[^>]*>', re.IGNORECASE), "GitBook CSS"),
+            (re.compile(r'<[^>]*ka-p\.fontawesome\.com[^>]*>', re.IGNORECASE), "FontAwesome"),
+            (re.compile(r'developers\.raycast\.com/~gitbook/image', re.IGNORECASE), "GitBook image proxy"),
+        ]
+
+        files_with_external = []
+
+        for html_file in sample_files:
+            try:
+                content = html_file.read_text(encoding="utf-8", errors="ignore")
+                for pattern, desc in external_patterns:
+                    if pattern.search(content):
+                        rel_path = html_file.relative_to(self.documents_dir)
+                        files_with_external.append((rel_path, desc))
+                        break  # Only report once per file
+            except OSError:
+                pass
+
+        if files_with_external:
+            self.error(f"Found {len(files_with_external)} HTML file(s) with external resources")
+            for rel_path, desc in files_with_external[:5]:
+                if self.verbose:
+                    self.warning(f"  {rel_path}: {desc}")
+            if len(files_with_external) > 5:
+                self.warning(f"  ... and {len(files_with_external) - 5} more")
+        else:
+            self.success("No external resources found (good for offline viewing)")
 
     def _check_html_content(self) -> None:
         """Check HTML files for unwanted content (tracking, cookies, etc.)."""
