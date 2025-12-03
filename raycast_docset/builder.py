@@ -135,6 +135,16 @@ class DocsetBuilder:
 
         print(f"  Processed {html_count} HTML files with TOC injection")
 
+        # Copy GitBook static assets (CSS, JS) if present
+        gitbook_static = self.source_docs_dir / "static-2v.gitbook.com"
+        if gitbook_static.exists():
+            dest_static = self.documents_dir / "static-2v.gitbook.com"
+            if dest_static.exists():
+                shutil.rmtree(dest_static)
+            shutil.copytree(gitbook_static, dest_static)
+            css_count = len(list(dest_static.rglob("*.css")))
+            print(f"  Copied {css_count} CSS files from GitBook static assets")
+
     def _copy_html_with_toc(self, source_file: Path, dest_file: Path) -> None:
         """Copy an HTML file, injecting dashAnchor elements for TOC support."""
         try:
@@ -260,10 +270,20 @@ class DocsetBuilder:
             flags=re.DOTALL | re.IGNORECASE,
         )
 
-        # Remove external GitBook CSS (won't work offline)
+        # Remove preconnect/dns-prefetch links to GitBook (useless offline)
         content = re.sub(
-            r'<link[^>]*static-2v\.gitbook\.com[^>]*/?>',
+            r'<link[^>]*href="https://static-2v\.gitbook\.com"[^>]*/?>',
             "",
+            content,
+            flags=re.IGNORECASE,
+        )
+
+        # Rewrite external GitBook CSS to local paths
+        # e.g., https://static-2v.gitbook.com/_next/static/css/xxx.css
+        # becomes ../static-2v.gitbook.com/_next/static/css/xxx.css (relative to depth)
+        content = re.sub(
+            r'href="https://static-2v\.gitbook\.com/([^"]+)"',
+            f'href="{prefix}static-2v.gitbook.com/\\1"',
             content,
             flags=re.IGNORECASE,
         )

@@ -105,6 +105,14 @@ Examples:
                     shutil.rmtree(dest)
                 shutil.copytree(docs_dir, dest)
 
+            # Copy GitBook static assets (CSS, JS) if downloaded
+            gitbook_static = args.cache_dir / "static-2v.gitbook.com"
+            if gitbook_static.exists():
+                dest = resources_dir / "static-2v.gitbook.com"
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(gitbook_static, dest)
+
             print()
             print("=" * 60)
             print("STEP 2: Building Dash docset with enhanced indexing")
@@ -121,15 +129,26 @@ Examples:
 
             # If source is a raw docs directory, wrap it in docset structure
             if not (source / "Contents").exists():
-                temp_source = args.cache_dir / "Raycast.docset"
+                # Use a temp directory outside the source to avoid recursive nesting
+                temp_source = args.output / ".temp_docset" / "Raycast.docset"
+                if temp_source.exists():
+                    shutil.rmtree(temp_source)
                 temp_source.mkdir(parents=True, exist_ok=True)
                 resources_dir = temp_source / "Contents" / "Resources" / "Documents"
                 resources_dir.mkdir(parents=True, exist_ok=True)
 
-                dest = resources_dir / "developers.raycast.com"
-                if dest.exists():
-                    shutil.rmtree(dest)
-                shutil.copytree(source, dest)
+                # Copy developers.raycast.com docs
+                docs_source = source / "developers.raycast.com"
+                if docs_source.exists():
+                    dest = resources_dir / "developers.raycast.com"
+                    shutil.copytree(docs_source, dest)
+
+                # Copy GitBook static assets if present
+                gitbook_source = source / "static-2v.gitbook.com"
+                if gitbook_source.exists():
+                    dest = resources_dir / "static-2v.gitbook.com"
+                    shutil.copytree(gitbook_source, dest)
+
                 source = temp_source
 
         # Build the docset

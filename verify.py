@@ -235,9 +235,9 @@ class DocsetValidator:
         sample_size = min(50, len(html_files))
         sample_files = random.sample(html_files, sample_size)
 
-        # Patterns for external resources that should be removed
+        # Patterns for external resources that should be removed or localized
         external_patterns = [
-            (re.compile(r'<link[^>]*static-2v\.gitbook\.com[^>]*>', re.IGNORECASE), "GitBook CSS"),
+            (re.compile(r'href="https?://static-2v\.gitbook\.com[^"]*"', re.IGNORECASE), "External GitBook CSS (not localized)"),
             (re.compile(r'<[^>]*ka-p\.fontawesome\.com[^>]*>', re.IGNORECASE), "FontAwesome"),
             (re.compile(r'~gitbook/image', re.IGNORECASE), "GitBook image proxy"),
             (re.compile(r'srcset="\s*\d+w', re.IGNORECASE), "Broken srcset (orphaned width descriptors)"),
@@ -265,6 +265,26 @@ class DocsetValidator:
                 self.warning(f"  ... and {len(files_with_external) - 5} more")
         else:
             self.success("No external resources found (good for offline viewing)")
+
+        # Check that CSS files exist for offline styling
+        css_files = list(self.documents_dir.rglob("*.css"))
+        if css_files:
+            self.success(f"Found {len(css_files)} local CSS files")
+        else:
+            # Check if HTML files have any stylesheet references
+            has_css_refs = False
+            for html_file in sample_files[:5]:
+                try:
+                    content = html_file.read_text(encoding="utf-8", errors="ignore")
+                    if re.search(r'<link[^>]*rel=["\']?stylesheet', content, re.IGNORECASE):
+                        has_css_refs = True
+                        break
+                except OSError:
+                    pass
+            if has_css_refs:
+                self.error("HTML files reference stylesheets but no local CSS files found")
+            else:
+                self.warning("No CSS files found (pages may render unstyled)")
 
     def _check_html_content(self) -> None:
         """Check HTML files for unwanted content (tracking, cookies, etc.)."""
