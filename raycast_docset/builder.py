@@ -142,8 +142,12 @@ class DocsetBuilder:
             if dest_static.exists():
                 shutil.rmtree(dest_static)
             shutil.copytree(gitbook_static, dest_static)
-            css_count = len(list(dest_static.rglob("*.css")))
-            print(f"  Copied {css_count} CSS files from GitBook static assets")
+
+            # Process CSS files to remove external font references
+            css_files = list(dest_static.rglob("*.css"))
+            for css_file in css_files:
+                self._fix_css_fonts(css_file)
+            print(f"  Copied and processed {len(css_files)} CSS files from GitBook static assets")
 
     def _copy_html_with_toc(self, source_file: Path, dest_file: Path) -> None:
         """Copy an HTML file, injecting dashAnchor elements for TOC support."""
@@ -323,6 +327,36 @@ class DocsetBuilder:
         )
 
         return content
+
+    def _fix_css_fonts(self, css_file: Path) -> None:
+        """Remove external font references from CSS files.
+
+        GitBook CSS references fonts from their CDN which won't work offline.
+        We remove these references so the browser uses fallback fonts.
+        """
+        try:
+            content = css_file.read_text(encoding="utf-8", errors="replace")
+
+            # Remove @font-face rules that reference external URLs
+            # Match @font-face { ... url(https://static-2v.gitbook.com/...) ... }
+            content = re.sub(
+                r'@font-face\s*\{[^}]*url\(["\']?https://static-2v\.gitbook\.com[^}]*\}',
+                '',
+                content,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+
+            # Also remove any remaining url() references to gitbook fonts
+            content = re.sub(
+                r'url\(["\']?https://static-2v\.gitbook\.com[^)]*\)',
+                'url()',
+                content,
+                flags=re.IGNORECASE,
+            )
+
+            css_file.write_text(content, encoding="utf-8")
+        except Exception:
+            pass  # If processing fails, leave the file as-is
 
     def _setup_icon(self) -> None:
         """Set up the docset icon."""

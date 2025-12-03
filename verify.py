@@ -270,6 +270,21 @@ class DocsetValidator:
         css_files = list(self.documents_dir.rglob("*.css"))
         if css_files:
             self.success(f"Found {len(css_files)} local CSS files")
+
+            # Check CSS files for external font references
+            external_font_refs = 0
+            for css_file in css_files:
+                try:
+                    content = css_file.read_text(encoding="utf-8", errors="ignore")
+                    if re.search(r'url\(["\']?https://static-2v\.gitbook\.com', content, re.IGNORECASE):
+                        external_font_refs += 1
+                except OSError:
+                    pass
+
+            if external_font_refs > 0:
+                self.error(f"Found {external_font_refs} CSS file(s) with external font references")
+            else:
+                self.success("No external font references in CSS files")
         else:
             # Check if HTML files have any stylesheet references
             has_css_refs = False
